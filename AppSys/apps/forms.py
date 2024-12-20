@@ -6,6 +6,7 @@ from .models import Appointment, DoctorBusyHours, Examination, Prescription
 from django import forms
 from .models import Medicine
 from .models import Patient
+from datetime import datetime
 
 User = get_user_model()
 
@@ -46,6 +47,31 @@ class AppointmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['patient'].queryset = Patient.objects.all().order_by('first_name', 'last_name')
         self.fields['patient'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        date = cleaned_data.get('date')
+        time = cleaned_data.get('time')
+
+        if date and time:
+            # Combine date and time for easier comparison
+            appointment_datetime = datetime.combine(date, time)
+            
+            # Check for busy hours
+            busy_hours = DoctorBusyHours.objects.filter(date=date)
+            
+            for busy_hour in busy_hours:
+                busy_start = datetime.combine(busy_hour.date, busy_hour.start_time)
+                busy_end = datetime.combine(busy_hour.date, busy_hour.end_time)
+                
+                if busy_start <= appointment_datetime <= busy_end:
+                    raise forms.ValidationError(
+                        f"Doctor is not available at this time due to: {busy_hour.reason}. "
+                        f"Busy hours are from {busy_hour.start_time.strftime('%I:%M %p')} "
+                        f"to {busy_hour.end_time.strftime('%I:%M %p')}."
+                    )
+
+        return cleaned_data
 
 class DoctorBusyHoursForm(forms.ModelForm):
     date = forms.DateField(
@@ -173,3 +199,20 @@ class MedicineForm(forms.ModelForm):
                 'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
             }),
         }        
+
+class EmailAuthenticationForm(forms.Form):
+    email = forms.EmailField(widget=forms.EmailInput(attrs={'autofocus': True}))
+    password = forms.CharField(
+        strip=False,
+        widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}),
+    )
+
+    error_messages = {
+        'invalid_login': "Please enter a correct email and password.",
+        'inactive': "This account is inactive.",
+    }
+
+    def __init__(self, request=None, *args, **kwargs):
+        self.request = request
+        self.user_cache = None
+        super().__init__(*args, **kwargs)        

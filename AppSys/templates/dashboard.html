@@ -1,7 +1,50 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<!-- FullCalendar CSS -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<style>
+    .fc-event {
+        cursor: pointer;
+    }
+    .appointment-event.status-scheduled { 
+        background-color: #93c5fd !important; 
+        border-color: #60a5fa !important; 
+    }
+    .appointment-event.status-completed { 
+        background-color: #86efac !important; 
+        border-color: #4ade80 !important; 
+    }
+    .appointment-event.status-cancelled { 
+        background-color: #fca5a5 !important; 
+        border-color: #f87171 !important; 
+    }
+    .busy-hours-event { 
+        background-color: #fcd34d !important; 
+        border-color: #fbbf24 !important; 
+    }
+    
+    /* Make the calendar responsive */
+    .calendar-container {
+        height: 700px;
+        margin: 20px 0;
+    }
+    
+    .fc .fc-toolbar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    @media (max-width: 768px) {
+        .calendar-container {
+            height: 500px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-6 p-6">
     <!-- Stats Section -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white p-6 rounded-lg shadow">
@@ -22,28 +65,70 @@
         </div>
     </div>
 
-    <!-- Schedule Section -->
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-6">
-            <h3 class="text-xl font-semibold mb-4">Today's Schedule</h3>
-            <div class="space-y-3">
-                <!-- Debug: {{ today_appointments|length }} appointments found -->
-                
-                {% for appointment in today_appointments %}
-                <a href="{% url 'appointment_detail' appointment.pk %}" class="block hover:bg-gray-50 p-3 rounded-lg border">
-                    <div class="flex justify-between items-center">
-                        <div class="text-blue-600 font-medium">{{ appointment.time|time:"H:i" }}</div>
-                        <div class="text-sm px-2 py-1 rounded-full {% if appointment.status == 'PENDING' %}bg-yellow-100 text-yellow-800{% else %}bg-green-100 text-green-800{% endif %}">
-                            {{ appointment.status }}
-                        </div>
-                    </div>
-                    <div class="text-gray-600 mt-1">{{ appointment.patient.first_name }} {{ appointment.patient.last_name }}</div>
-                </a>
-                {% empty %}
-                <p class="text-gray-500 text-center py-4">No appointments scheduled for today.</p>
-                {% endfor %}
-            </div>
+    <!-- Calendar Section -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="calendar-container">
+            <div id="calendar"></div>
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        slotMinTime: '08:00:00',
+        slotMaxTime: '18:00:00',
+        allDaySlot: false,
+        slotDuration: '00:30:00',
+        height: '100%',
+        events: {
+            url: '/api/calendar-events/',
+            failure: function() {
+                alert('There was an error fetching events!');
+            }
+        },
+        eventClick: function(info) {
+            if (info.event.url) {
+                window.location.href = info.event.url;
+            }
+        },
+        eventDidMount: function(info) {
+            // Add tooltips
+            if (info.event.extendedProps.description) {
+                info.el.title = info.event.extendedProps.description;
+            }
+        },
+        // Make the calendar more responsive
+        windowResize: function(view) {
+            if (window.innerWidth < 768) {
+                calendar.setOption('headerToolbar', {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: 'timeGridDay,timeGridWeek'
+                });
+            } else {
+                calendar.setOption('headerToolbar', {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                });
+            }
+        }
+    });
+    calendar.render();
+});
+</script>
 {% endblock %} 

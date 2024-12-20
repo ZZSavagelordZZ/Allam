@@ -1,68 +1,102 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="space-y-6">
-    <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold">Appointment Calendar</h1>
-        <div class="space-x-3">
-            <a href="{% url 'appointment_create' %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">New Appointment</a>
-            <a href="{% url 'busy_hours_create' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md">Add Busy Hours</a>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-lg shadow">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-6">
-                <a href="?month={{ prev_month }}&year={{ prev_year }}" class="text-blue-600 hover:text-blue-800">&laquo; Previous</a>
-                <h3 class="text-xl font-semibold">{{ month_name }} {{ year }}</h3>
-                <a href="?month={{ next_month }}&year={{ next_year }}" class="text-blue-600 hover:text-blue-800">Next &raquo;</a>
+<div class="min-h-screen bg-gray-50 py-6 sm:py-8">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 space-y-4 sm:space-y-0">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Appointment Calendar</h1>
+                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+                    <a href="{% url 'appointment_create' %}" class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        New Appointment
+                    </a>
+                    <a href="{% url 'busy_hours_create' %}" class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Add Busy Hours
+                    </a>
+                </div>
             </div>
 
-            <table class="w-full">
-                <thead>
-                    <tr>
-                        <th class="py-2 px-3 border-b">Mon</th>
-                        <th class="py-2 px-3 border-b">Tue</th>
-                        <th class="py-2 px-3 border-b">Wed</th>
-                        <th class="py-2 px-3 border-b">Thu</th>
-                        <th class="py-2 px-3 border-b">Fri</th>
-                        <th class="py-2 px-3 border-b">Sat</th>
-                        <th class="py-2 px-3 border-b">Sun</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for week in calendar_data %}
-                    <tr>
-                        {% for day, appointments, is_busy in week %}
-                        <td class="border p-2 h-32 w-32 align-top {% if is_busy %}bg-gray-50{% endif %}">
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">{{ day.day }}</span>
+            <!-- Calendar Navigation -->
+            <div class="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded-lg">
+                <a href="?month={{ prev_month }}&year={{ prev_year }}" class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Previous</span>
+                </a>
+                <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{{ month_name }} {{ year }}</h3>
+                <a href="?month={{ next_month }}&year={{ next_year }}" class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                    <span class="hidden sm:inline">Next</span>
+                    <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th class="hidden sm:table-cell py-2 px-2 sm:px-3 border-b text-xs sm:text-sm font-semibold text-gray-600">Mon</th>
+                            <th class="hidden sm:table-cell py-2 px-2 sm:px-3 border-b text-xs sm:text-sm font-semibold text-gray-600">Tue</th>
+                            <th class="hidden sm:table-cell py-2 px-2 sm:px-3 border-b text-xs sm:text-sm font-semibold text-gray-600">Wed</th>
+                            <th class="hidden sm:table-cell py-2 px-2 sm:px-3 border-b text-xs sm:text-sm font-semibold text-gray-600">Thu</th>
+                            <th class="hidden sm:table-cell py-2 px-2 sm:px-3 border-b text-xs sm:text-sm font-semibold text-gray-600">Fri</th>
+                            <th class="hidden sm:table-cell py-2 px-2 sm:px-3 border-b text-xs sm:text-sm font-semibold text-gray-600">Sat</th>
+                            <th class="hidden sm:table-cell py-2 px-2 sm:px-3 border-b text-xs sm:text-sm font-semibold text-gray-600">Sun</th>
+                            <!-- Mobile day headers -->
+                            <th class="sm:hidden py-2 px-2 border-b text-xs font-semibold text-gray-600">M</th>
+                            <th class="sm:hidden py-2 px-2 border-b text-xs font-semibold text-gray-600">T</th>
+                            <th class="sm:hidden py-2 px-2 border-b text-xs font-semibold text-gray-600">W</th>
+                            <th class="sm:hidden py-2 px-2 border-b text-xs font-semibold text-gray-600">T</th>
+                            <th class="sm:hidden py-2 px-2 border-b text-xs font-semibold text-gray-600">F</th>
+                            <th class="sm:hidden py-2 px-2 border-b text-xs font-semibold text-gray-600">S</th>
+                            <th class="sm:hidden py-2 px-2 border-b text-xs font-semibold text-gray-600">S</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in calendar_data %}
+                        <tr>
+                            {% for day, appointments, is_busy in week %}
+                            <td class="border p-1 sm:p-2 h-24 sm:h-32 w-full sm:w-32 align-top {% if is_busy %}bg-gray-50{% endif %}">
+                                <div class="flex justify-between items-start">
+                                    <span class="text-xs sm:text-sm text-gray-600">{{ day.day }}</span>
+                                    {% if appointments %}
+                                    <span class="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded-full">{{ appointments|length }}</span>
+                                    {% endif %}
+                                </div>
                                 {% if appointments %}
-                                <span class="bg-blue-100 text-blue-800 text-xs px-2 rounded-full">{{ appointments|length }}</span>
-                                {% endif %}
-                            </div>
-                            {% if appointments %}
-                            <div class="mt-1 space-y-1">
-                                {% for appointment in appointments|slice:":3" %}
-                                <div class="text-xs">
-                                    <a href="{% url 'appointment_detail' appointment.pk %}" class="text-blue-600 hover:text-blue-800">
-                                        {{ appointment.time|time:"H:i" }} - {{ appointment.patient.last_name }}
-                                    </a>
+                                <div class="mt-1 space-y-1 overflow-y-auto max-h-20 sm:max-h-24">
+                                    {% for appointment in appointments|slice:":3" %}
+                                    <div class="text-xs">
+                                        <a href="{% url 'appointment_detail' appointment.pk %}" class="block p-1 rounded hover:bg-gray-50 text-blue-600 hover:text-blue-800">
+                                            <span class="hidden sm:inline">{{ appointment.time|time:"H:i" }} - </span>
+                                            <span class="font-medium">{{ appointment.patient.last_name }}</span>
+                                        </a>
+                                    </div>
+                                    {% endfor %}
+                                    {% if appointments|length > 3 %}
+                                    <div class="text-xs text-gray-500 px-1">
+                                        +{{ appointments|length|add:"-3" }} more
+                                    </div>
+                                    {% endif %}
                                 </div>
-                                {% endfor %}
-                                {% if appointments|length > 3 %}
-                                <div class="text-xs text-gray-500">
-                                    +{{ appointments|length|add:"-3" }} more
-                                </div>
                                 {% endif %}
-                            </div>
-                            {% endif %}
-                        </td>
+                            </td>
+                            {% endfor %}
+                        </tr>
                         {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

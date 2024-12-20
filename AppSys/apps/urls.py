@@ -45,6 +45,7 @@ urlpatterns = [
     path('secretaries/new/', views.SecretaryCreateView.as_view(), name='secretary_create'),
     path('secretaries/<int:pk>/edit/', views.SecretaryUpdateView.as_view(), name='secretary_update'),
     path('secretaries/<int:pk>/delete/', views.SecretaryDeleteView.as_view(), name='secretary_delete'),
+    path('api/check-busy-hours/', views.check_busy_hours, name='check_busy_hours'),
 ]
 
 

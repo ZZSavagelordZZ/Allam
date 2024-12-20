@@ -75,14 +75,15 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 @login_required
 @require_GET
 def calendar_events(request):
+    from datetime import datetime
     # Parse the start and end dates from the request
-    start_date = request.GET.get('start', '')
-    end_date = request.GET.get('end', '')
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
     
     try:
-        start_date = datetime.strptime(start_date[:10], '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date[:10], '%Y-%m-%d').date()
-    except ValueError:
+        start_date = datetime.fromisoformat(start.replace('Z', '+00:00')).date()
+        end_date = datetime.fromisoformat(end.replace('Z', '+00:00')).date()
+    except (ValueError, AttributeError):
         start_date = timezone.now().date()
         end_date = start_date + timezone.timedelta(days=30)
 
@@ -110,7 +111,7 @@ def calendar_events(request):
             'end': end_datetime.isoformat(),
             'url': reverse('appointment_detail', args=[appointment.id]),
             'className': f'appointment-event status-{appointment.status}',
-            'description': f'Status: {appointment.status}'
+            'description': f'Status: {appointment.get_status_display()}'
         })
     
     # Add busy hours to events
@@ -134,10 +135,16 @@ class PatientListView(LoginRequiredMixin, IsStaffMixin, ListView):
     model = Patient
     template_name = 'patients/patient_list.html'
     context_object_name = 'patients'
+    ordering = ['first_name', 'last_name']
 
 class PatientDetailView(LoginRequiredMixin, IsStaffMixin, DetailView):
     model = Patient
     template_name = 'patients/patient_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_secretary'] = self.request.user.role == 'secretary'
+        return context
 
 class PatientCreateView(LoginRequiredMixin, IsSecretaryMixin, CreateView):
     model = Patient
@@ -150,12 +157,13 @@ class PatientCreateView(LoginRequiredMixin, IsSecretaryMixin, CreateView):
         messages.success(self.request, f'Patient {form.instance.first_name} {form.instance.last_name} created successfully!')
         return response
 
-class PatientUpdateView(LoginRequiredMixin, IsStaffMixin, UpdateView):
+class PatientUpdateView(LoginRequiredMixin, IsSecretaryMixin, UpdateView):
     model = Patient
     template_name = 'patients/patient_form.html'
     fields = ['first_name', 'last_name', 'date_of_birth', 'phone', 'email', 'address']
+    success_url = reverse_lazy('patient_list')
 
-class PatientDeleteView(LoginRequiredMixin, IsStaffMixin, DeleteView):
+class PatientDeleteView(LoginRequiredMixin, IsSecretaryMixin, DeleteView):
     model = Patient
     template_name = 'patients/patient_confirm_delete.html'
     success_url = reverse_lazy('patient_list')
@@ -165,33 +173,74 @@ class AppointmentListView(LoginRequiredMixin, IsStaffMixin, ListView):
     model = Appointment
     template_name = 'appointments/appointment_list.html'
     context_object_name = 'appointments'
+    ordering = ['-date', 'time']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_secretary'] = self.request.user.role == 'secretary'
+        return context
 
 class AppointmentDetailView(LoginRequiredMixin, IsStaffMixin, DetailView):
     model = Appointment
     template_name = 'appointments/appointment_detail.html'
 
-class AppointmentCreateView(LoginRequiredMixin, IsStaffMixin, CreateView):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_secretary'] = self.request.user.role == 'secretary'
+        return context
+
+class AppointmentCreateView(LoginRequiredMixin, IsSecretaryMixin, CreateView):
     model = Appointment
     form_class = AppointmentForm
     template_name = 'appointments/appointment_form.html'
     success_url = reverse_lazy('appointment_list')
 
     def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        response = super().form_valid(form)
-        messages.success(self.request, 'Appointment created successfully!')
-        return response
+        try:
+            response = super().form_valid(form)
+            messages.success(self.request, 'Appointment scheduled successfully!')
+            return response
+        except ValidationError as e:
+            messages.error(self.request, str(e))
+            return self.form_invalid(form)
 
-class AppointmentUpdateView(LoginRequiredMixin, IsStaffMixin, UpdateView):
+    def form_invalid(self, form):
+        for error in form.non_field_errors():
+            messages.error(self.request, error)
+        return super().form_invalid(form)
+
+class AppointmentUpdateView(LoginRequiredMixin, IsSecretaryMixin, UpdateView):
     model = Appointment
     form_class = AppointmentForm
     template_name = 'appointments/appointment_form.html'
     success_url = reverse_lazy('appointment_list')
 
-class AppointmentDeleteView(LoginRequiredMixin, IsStaffMixin, DeleteView):
+    def get_queryset(self):
+        # Only allow updating scheduled appointments
+        return super().get_queryset().filter(status='scheduled')
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if obj.status != 'scheduled':
+            messages.error(self.request, "Only scheduled appointments can be modified.")
+            raise PermissionDenied
+        return obj
+
+class AppointmentDeleteView(LoginRequiredMixin, IsSecretaryMixin, DeleteView):
     model = Appointment
     template_name = 'appointments/appointment_confirm_delete.html'
     success_url = reverse_lazy('appointment_list')
+
+    def get_queryset(self):
+        # Only allow deleting scheduled appointments
+        return super().get_queryset().filter(status='scheduled')
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if obj.status != 'scheduled':
+            messages.error(self.request, "Only scheduled appointments can be deleted.")
+            raise PermissionDenied
+        return obj
 
 # Doctor Busy Hours Views
 class DoctorBusyHoursListView(LoginRequiredMixin, IsDoctorMixin, ListView):
@@ -392,3 +441,34 @@ class MedicineUpdateView(UpdateView):
     form_class = MedicineForm
     template_name = 'medicines/medicine_form.html'
     success_url = reverse_lazy('medicine_list')
+
+def check_busy_hours(request):
+    date_str = request.GET.get('date')
+    time_str = request.GET.get('time')
+    
+    if not date_str or not time_str:
+        return JsonResponse({'error': 'Date and time are required'}, status=400)
+    
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        time = datetime.strptime(time_str, '%H:%M').time()
+        appointment_datetime = datetime.combine(date, time)
+        
+        busy_hours = DoctorBusyHours.objects.filter(date=date)
+        
+        for busy_hour in busy_hours:
+            busy_start = datetime.combine(busy_hour.date, busy_hour.start_time)
+            busy_end = datetime.combine(busy_hour.date, busy_hour.end_time)
+            
+            if busy_start <= appointment_datetime <= busy_end:
+                return JsonResponse({
+                    'is_busy': True,
+                    'busy_start': busy_hour.start_time.strftime('%I:%M %p'),
+                    'busy_end': busy_hour.end_time.strftime('%I:%M %p'),
+                    'reason': busy_hour.reason
+                })
+        
+        return JsonResponse({'is_busy': False})
+    
+    except ValueError:
+        return JsonResponse({'error': 'Invalid date or time format'}, status=400)
