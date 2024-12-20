@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div>
+    <div>
+        <h2>{% if form.instance.pk %}Edit{% else %}New{% endif %} Examination</h2>
+
+        <div>
+            <strong>Patient:</strong> {{ appointment.patient.first_name }} {{ appointment.patient.last_name }}<br>
+            <strong>Appointment:</strong> {{ appointment.date|date:"F j, Y" }} at {{ appointment.time|time:"H:i" }}
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div>
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <!-- Examination Details -->
+            <h3>Examination Details</h3>
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                        {% for error in field.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            <!-- Prescriptions -->
+            <h3>Prescriptions</h3>
+            {{ prescription_formset.management_form }}
+            <div id="prescription-forms">
+                {% for prescription_form in prescription_formset %}
+                    <div class="prescription-form">
+                        {% for hidden in prescription_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+                        {% for field in prescription_form.visible_fields %}
+                            {% if field.name != 'DELETE' %}
+                                <div>
+                                    <label for="{{ field.id_for_label }}">
+                                        {{ field.label }}
+                                    </label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        {% for error in field.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% if not forloop.first %}
+                            <button type="button" class="delete-prescription">
+                                Remove
+                            </button>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="add-prescription">
+                Add Another Prescription
+            </button>
+
+            <div>
+                <button type="submit">
+                    {% if form.instance.pk %}Save Changes{% else %}Complete Examination{% endif %}
+                </button>
+                <a href="{% url 'appointment_detail' appointment.pk %}">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle dynamic prescription forms
+        const prescriptionForms = document.getElementById('prescription-forms');
+        const totalFormsInput = document.getElementById('id_prescription_set-TOTAL_FORMS');
+        
+        document.querySelector('.add-prescription').addEventListener('click', function() {
+            const totalForms = parseInt(totalFormsInput.value);
+            const newForm = prescriptionForms.children[prescriptionForms.children.length - 1].cloneNode(true);
+            
+            // Update form index
+            newForm.querySelectorAll('input, select, textarea').forEach(function(input) {
+                const name = input.getAttribute('name');
+                if (name) {
+                    const newName = name.replace('-' + (totalForms-1) + '-', '-' + totalForms + '-');
+                    input.setAttribute('name', newName);
+                    input.setAttribute('id', 'id_' + newName);
+                }
+            });
+            
+            // Clear values
+            newForm.querySelectorAll('input:not([type=hidden])').forEach(input => input.value = '');
+            newForm.querySelectorAll('textarea').forEach(textarea => textarea.value = '');
+            newForm.querySelectorAll('select').forEach(select => select.value = '');
+            
+            prescriptionForms.appendChild(newForm);
+            totalFormsInput.value = totalForms + 1;
+        });
+
+        // Handle prescription deletion
+        document.querySelectorAll('.delete-prescription').forEach(function(button) {
+            button.addEventListener('click', function() {
+                const form = this.closest('.prescription-form');
+                form.querySelector('[id$=DELETE]').checked = true;
+                form.style.display = 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Section -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="text-3xl font-bold text-blue-600">{{ total_patients }}</div>
+            <div class="text-gray-600">Total Patients</div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="text-3xl font-bold text-green-600">{{ todays_appointments }}</div>
+            <div class="text-gray-600">Today's Appointments</div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="text-3xl font-bold text-yellow-600">{{ pending_appointments }}</div>
+            <div class="text-gray-600">Pending Appointments</div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="text-3xl font-bold text-purple-600">{{ completed_this_week }}</div>
+            <div class="text-gray-600">Completed This Week</div>
+        </div>
+    </div>
+
+    <!-- Schedule Section -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-6">
+            <h3 class="text-xl font-semibold mb-4">Today's Schedule</h3>
+            <div class="space-y-3">
+                <!-- Debug: {{ today_appointments|length }} appointments found -->
+                
+                {% for appointment in today_appointments %}
+                <a href="{% url 'appointment_detail' appointment.pk %}" class="block hover:bg-gray-50 p-3 rounded-lg border">
+                    <div class="flex justify-between items-center">
+                        <div class="text-blue-600 font-medium">{{ appointment.time|time:"H:i" }}</div>
+                        <div class="text-sm px-2 py-1 rounded-full {% if appointment.status == 'PENDING' %}bg-yellow-100 text-yellow-800{% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ appointment.status }}
+                        </div>
+                    </div>
+                    <div class="text-gray-600 mt-1">{{ appointment.patient.first_name }} {{ appointment.patient.last_name }}</div>
+                </a>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No appointments scheduled for today.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}
+Home
+{% endblock title %}
+{% block content %}
+<div class="jumbotron">
+<h1 class="display-4">JobListing</h1>
+{% if user.is_authenticated %}
+<!-- This is a Django template tag that checks if the user is authenticated
+(logged in). -->
+<p>Welcome, {{ user.username }}!</p>
+<!-- If the user is logged in, it displays a personalized welcome message
+with the username. -->
+{% else %}
+<p>You are not logged in.</p>
+<!-- If the user is not logged in, it displays a message indicating that the
+user is not logged in. -->
+{% endif %}
+<p class="lead">A Job listing website built with Django.</p>
+<!-- This is a lead paragraph providing a brief description of the website. -->
+<p class="lead">
+<a class="btn btn-primary btn-lg" href="{% url 'listing_list' %}" role="button">View All listings</a>
+</p>
+<!-- This is a button that links to the 'listing_list' URL, which is defined in
+the Django project. It allows users to view all job listings. -->
+</div>
+{% endblock content %}
+
+

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div>
+    <div>
+        <h1>Examination Details</h1>
+        <div>
+            <h2>Patient Information</h2>
+            <dl>
+                <dt>Patient</dt>
+                <dd>
+                    <a href="{% url 'patient_detail' examination.appointment.patient.pk %}">
+                        {{ examination.appointment.patient.first_name }} 
+                        {{ examination.appointment.patient.last_name }}
+                    </a>
+                </dd>
+                
+                <dt>Date</dt>
+                <dd>{{ examination.appointment.date }}</dd>
+            </dl>
+
+            <h2>Examination Details</h2>
+            <dl>
+                <dt>Symptoms</dt>
+                <dd>{{ examination.symptoms }}</dd>
+                
+                <dt>Diagnosis</dt>
+                <dd>{{ examination.diagnosis }}</dd>
+                
+                <dt>Notes</dt>
+                <dd>{{ examination.notes|default:"No additional notes" }}</dd>
+            </dl>
+
+            <h2>Prescriptions</h2>
+            {% if examination.prescription_set.exists %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Medicine</th>
+                            <th>Dosage</th>
+                            <th>Duration</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prescription in examination.prescription_set.all %}
+                        <tr>
+                            <td>{{ prescription.medicine.name }}</td>
+                            <td>{{ prescription.dosage }}</td>
+                            <td>{{ prescription.duration }}</td>
+                            <td>{{ prescription.notes|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No prescriptions added.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div>
+        <div>
+            <h2>Actions</h2>
+            <div>
+                <a href="{% url 'examination_update' examination.pk %}">Edit Examination</a>
+                <a href="{% url 'appointment_detail' examination.appointment.pk %}">Back to Appointment</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
